@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
   Wallet.init(
     {
       userId: DataTypes.INTEGER,
-      amount: DataTypes.INTEGER
+      amount: DataTypes.DECIMAL(10, 2),
     },
     {
       sequelize,

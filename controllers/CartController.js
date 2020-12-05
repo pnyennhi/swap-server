@@ -107,7 +107,7 @@ class CartController {
       });
 
       if (req.body.quantity > cart.product.quantity - cart.product.soldQuantity)
-        return res.status(500).json("Quantity is over");
+        return res.status(500).json("Vượt quá số lượng kho hàng");
 
       if (cart.product.quantity === cart.product.soldQuantity)
         return res.status(500).json("Out of stock");

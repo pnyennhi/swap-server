@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       walletId: DataTypes.INTEGER,
       type: DataTypes.STRING,
-      amount: DataTypes.INTEGER,
+      amount: DataTypes.DECIMAL(10, 2),
       orderId: DataTypes.INTEGER,
       paypalTransactionId: DataTypes.STRING,
       paypalPayoutId: DataTypes.STRING,

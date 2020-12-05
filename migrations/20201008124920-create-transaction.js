@@ -36,7 +36,7 @@ module.exports = {
         allowNull: true,
       },
       amount: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.DECIMAL(10, 2),
       },
       type: {
         type: Sequelize.STRING,

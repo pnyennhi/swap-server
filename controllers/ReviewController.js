@@ -87,7 +87,10 @@ class ReviewController {
 
       const reviews = await models.Review.findAll({
         ...query,
-        include: [{ model: models.User, as: "user" }],
+        include: [
+          { model: models.User, as: "user" },
+          { model: models.User, as: "seller" },
+        ],
       });
 
       const total = await models.Review.count({ where: query.where });

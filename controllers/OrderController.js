@@ -34,7 +34,7 @@ class OrderController {
         );
 
         order.dataValues.status = order.dataValues.status.status;
-        order.dataValues.total = total + order.dataValues.shippingFee;
+        order.dataValues.total = total + Number(order.dataValues.shippingFee);
       });
 
       const orders =
@@ -152,7 +152,7 @@ class OrderController {
           0
         );
 
-        order.dataValues.total = total + order.dataValues.shippingFee;
+        order.dataValues.total = total + Number(order.dataValues.shippingFee);
       });
 
       return res.status(200).json(orders);
@@ -167,7 +167,7 @@ class OrderController {
       const user = jwt.decode(tokenFromHeader);
       const userId = user.payload.id;
 
-      const { id, statusId } = req.query;
+      const { id, statusId, page, pageSize } = req.query;
 
       const query = { where: {} };
 
@@ -179,7 +179,7 @@ class OrderController {
         query.where.statusId = statusId;
       }
 
-      const orders = await models.Order.findAll({
+      let orders = await models.Order.findAll({
         where: { sellerId: userId, ...query.where },
         order: [["id", "DESC"]],
         include: [
@@ -215,10 +215,16 @@ class OrderController {
           0
         );
 
-        order.dataValues.total = total + order.dataValues.shippingFee;
+        order.dataValues.total = total + Number(order.dataValues.shippingFee);
       });
 
-      return res.status(200).json(orders);
+      const total = orders.length;
+
+      if (page && pageSize) {
+        orders = orders.slice((page - 1) * pageSize, page * pageSize);
+      }
+
+      return res.status(200).json({ data: orders, total: total });
     } catch (error) {
       return res.status(400).json(error.message);
     }
@@ -243,6 +249,45 @@ class OrderController {
     } catch (error) {
       return res.status(400).json(error.message);
     }
+  }
+
+  async getStatisticOfSeller(req, res) {
+    try {
+      const tokenFromHeader = auth.getJwtToken(req);
+      const user = jwt.decode(tokenFromHeader);
+      const userId = user.payload.id;
+
+      const all = await models.Order.count({ where: { sellerId: userId } });
+      const paymentWaiting = await models.Order.count({
+        where: { sellerId: userId, statusId: 1 },
+      });
+      const acceptWaiting = await models.Order.count({
+        where: { sellerId: userId, statusId: 2 },
+      });
+      const pickupWaiting = await models.Order.count({
+        where: { sellerId: userId, statusId: 3 },
+      });
+      const delivering = await models.Order.count({
+        where: { sellerId: userId, statusId: 4 },
+      });
+      const done = await models.Order.count({
+        where: { sellerId: userId, statusId: 5 },
+      });
+      const cancel = await models.Order.count({
+        where: { sellerId: userId, statusId: 6 },
+      });
+
+      return res
+        .status(200)
+        .json([
+          paymentWaiting,
+          acceptWaiting,
+          pickupWaiting,
+          delivering,
+          done,
+          cancel,
+        ]);
+    } catch (error) {}
   }
 
   async createOrder(req, res, next) {
@@ -312,7 +357,7 @@ class OrderController {
         where: { id: departureId },
       });
 
-      order.statusId = 2;
+      order.statusId = 3;
       order.sellerCityId = sellerAddress.cityId;
       order.sellerDistrictId = sellerAddress.districtId;
       order.sellerWardId = sellerAddress.wardId;
@@ -347,10 +392,12 @@ class OrderController {
         return res.status(500).json("You don't have permission");
       }
 
+      const oldStatusId = order.statusId;
+
       order.statusId = 6;
 
       if (order.save()) {
-        if (order.paymentMethod === "paypal") {
+        if (order.paymentMethod === "paypal" && oldStatusId !== 1) {
           const total = order.dataValues.items.reduce(
             (sum, item) => (sum += item.price * item.quantity),
             0
@@ -359,13 +406,16 @@ class OrderController {
             where: { userId: order.userId },
           });
 
-          wallet.amount = wallet.dataValues.amount + total + order.shippingFee;
+          wallet.amount =
+            Number(wallet.dataValues.amount) +
+            total +
+            Number(order.shippingFee);
           await wallet.save();
 
           const transaction = await models.Transaction.create({
             walletId: wallet.id,
             orderId: order.id,
-            amount: total + order.shippingFee,
+            amount: total + Number(order.shippingFee),
             type: "refund",
             status: "success",
           });
@@ -382,11 +432,14 @@ class OrderController {
     try {
       const { id } = req.params;
 
-      const order = await models.Order.findOne({ where: { id: Number(id) } });
+      const order = await models.Order.findOne({
+        where: { id: Number(id) },
+        include: [{ model: models.OrderItem, as: "items" }],
+      });
 
-      if (req.body.statusId == 2 || req.body.statusId == 6) {
-        return res.status(500).json("You don't have permission");
-      }
+      // if (req.body.statusId == 2 || req.body.statusId == 6) {
+      //   return res.status(500).json("You don't have permission");
+      // }
 
       order.statusId = req.body.statusId;
 
@@ -406,7 +459,9 @@ class OrderController {
             type: "deposit",
             status: "success",
           });
-          return res.status(500).json("Error");
+          wallet.amount = Number(wallet.dataValues.amount) + Number(total);
+          await wallet.save();
+          return res.status(200).json(transaction);
         } else if (req.body.statusId === 6) {
           return next();
         }

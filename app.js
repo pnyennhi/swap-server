@@ -35,6 +35,7 @@ var reviewsRouter = require("./routes/reviews");
 var shippingRouter = require("./routes/shipping");
 var brandRouter = require("./routes/brand");
 var sizeRouter = require("./routes/size");
+var dashboardRouter = require("./routes/dashboard");
 
 var transactionController = require("./controllers/TransactionController");
 
@@ -77,6 +78,7 @@ app.use("/reviews", reviewsRouter);
 app.use("/shipping", shippingRouter);
 app.use("/brands", brandRouter);
 app.use("/sizes", sizeRouter);
+app.use("/dashboard", dashboardRouter);
 
 app.post("/webhook", async (req, res) => {
   // console.log("app", req.body);

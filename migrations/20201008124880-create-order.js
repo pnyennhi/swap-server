@@ -88,7 +88,7 @@ module.exports = {
       paymentMethod: {
         type: Sequelize.STRING,
       },
-      shippingFee: { type: Sequelize.INTEGER },
+      shippingFee: { type: Sequelize.DECIMAL(10, 2) },
       statusId: {
         type: Sequelize.INTEGER,
         references: {

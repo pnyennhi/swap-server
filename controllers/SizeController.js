@@ -1,10 +1,11 @@
 const _ = require("lodash");
 const models = require("../models");
+const Sequelize = require("sequelize");
 
 class SizeController {
   async getAllSizes(req, res) {
     try {
-      const { categoryId, category } = req.query;
+      const { categoryId, category, isUnique } = req.query;
 
       const query = { where: {} };
 
@@ -23,7 +24,16 @@ class SizeController {
         query.where.categoryId = categoryData.id;
       }
 
-      const sizes = await models.Size.findAll({ where: query.where });
+      if (isUnique) {
+        query.attributes = [
+          [Sequelize.fn("DISTINCT", Sequelize.col("size")), "size"],
+        ];
+      }
+
+      const sizes = await models.Size.findAll({
+        where: query.where,
+        ...query,
+      });
 
       return res.status(200).json(sizes);
     } catch (error) {

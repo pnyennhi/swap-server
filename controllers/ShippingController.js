@@ -60,7 +60,7 @@ class ShippingController {
           if (product.soldQuantity === product.quantity) {
             soldItems.push(product.id);
           } else {
-            weight += product.weight;
+            weight += product.weight * item.quantity;
             total += product.price;
           }
         });

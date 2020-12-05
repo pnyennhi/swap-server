@@ -3,6 +3,8 @@ const bcrypt = require("bcrypt");
 const config = require("../config/app");
 const auth = require("../utils/auth");
 const jwt = require("jsonwebtoken");
+const { Op } = require("sequelize");
+const sequelize = require("sequelize");
 const { User, Role, Product, Wallet, Review } = require("../models");
 
 class UserController {
@@ -32,33 +34,119 @@ class UserController {
 
   async getAllUsers(req, res) {
     try {
-      const { page, pageSize, sort, criteria, keyword } = req.query;
+      const {
+        page,
+        pageSize,
+        sort,
+        criteria,
+        keyword,
+        orderBy,
+        isActive,
+      } = req.query;
 
-      const query = {};
+      const query = { where: {} };
 
       query.offset = pageSize && page ? pageSize * (page - 1) : 0;
       query.limit = pageSize ? parseInt(pageSize) : null;
       query.order =
         criteria && sort ? [[criteria, sort]] : [["createdAt", "desc"]];
 
-      const users = await User.findAll({
-        include: [{ model: Role, as: "role" }],
-        // attributes: [
-        //   "id",
-        //   "username",
-        //   "email",
-        //   "roleId",
-        //   "role",
-        //   "createdAt",
-        //   "isActive",
-        // ],
-        ...query,
-      });
-      if (!users) {
-        return res.status(200).json("Not found");
+      if (keyword) {
+        query.where = {
+          [Op.or]: [
+            {
+              username: {
+                [Op.like]: `%${keyword}%`,
+              },
+            },
+            {
+              email: {
+                [Op.like]: `%${keyword}%`,
+              },
+            },
+          ],
+          roleId: 2,
+        };
       }
 
-      const count = await User.count();
+      if (isActive) {
+        query.where.isActive = true;
+      }
+
+      let users;
+
+      if (!orderBy) {
+        users = await User.findAll({
+          include: [{ model: Role, as: "role" }],
+          ...query,
+        });
+        if (!users) {
+          return res.status(200).json("Not found");
+        }
+      } else {
+        users = await User.findAll({
+          include: [{ model: Role, as: "role" }],
+          where: query.where,
+        });
+      }
+
+      await (async function () {
+        users.forEach(async (user) => {
+          const products = await Product.findAll({
+            where: { ownerId: user.id },
+          });
+
+          const soldQuantity = products.reduce(
+            (acc, item) => (acc += item.dataValues.soldQuantity),
+            0
+          );
+
+          user.dataValues.soldQuantity = soldQuantity;
+        });
+      })();
+
+      await (async function () {
+        users.forEach(async (user) => {
+          const totalProducts = await Product.count({
+            where: { ownerId: user.id, statusId: 2 },
+          });
+
+          user.dataValues.totalProducts = totalProducts;
+        });
+      })();
+
+      await (async function () {
+        for (const user of users) {
+          const reviews = await Review.findAll({
+            where: { sellerId: user.id },
+          });
+
+          const rate =
+            reviews.length > 0
+              ? reviews.reduce((acc, review) => (acc += review.rate), 0) /
+                reviews.length
+              : 0;
+          user.dataValues.rate =
+            rate === 0 ? 0 : Number((Math.round(rate * 2) / 2).toFixed(1));
+        }
+      })();
+
+      const count = await User.count({ ...query });
+
+      if (orderBy) {
+        switch (orderBy) {
+          case "rate":
+            users.sort((a, b) => b.dataValues.rate - a.dataValues.rate);
+            break;
+          case "sold":
+            users.sort(
+              (a, b) => b.dataValues.soldQuantity - a.dataValues.soldQuantity
+            );
+            break;
+        }
+
+        users = users.slice((page - 1) * pageSize, page * pageSize);
+      }
 
       return res.status(200).json({ data: users, total: count });
     } catch (error) {
@@ -118,7 +206,8 @@ class UserController {
           : 0;
 
       user.dataValues.totalActiveProducts = totalActiveProducts;
-      user.dataValues.rate = (Math.round(rate * 2) / 2).toFixed(1);
+      user.dataValues.rate =
+        rate === 0 ? 0 : (Math.round(rate * 2) / 2).toFixed(1);
       user.dataValues.totalReviews = reviews.length;
 
       const data = _.omit(user.dataValues, [
@@ -143,7 +232,7 @@ class UserController {
       // TODO: validate username
       user = await User.findOne({ where: { email: req.body.email } });
       if (user) {
-        return res.status(500).json("Username existed");
+        return res.status(500).json("Email đã tồn tại");
       }
 
       const data = req.body;
@@ -155,7 +244,7 @@ class UserController {
 
       const userId = user.dataValues.id;
 
-      // const wallet = await Wallet.create({ userId: userId, amount: 0 });
+      const wallet = await Wallet.create({ userId: userId, amount: 0 });
 
       res.status(200).json(user);
     } catch (error) {
@@ -169,7 +258,7 @@ class UserController {
       // TODO: validate username
       user = await User.findOne({ where: { email: req.body.email } });
       if (user) {
-        return res.status(500).json("Username existed");
+        return res.status(500).json("Email đã tồn tại");
       }
 
       const data = req.body;
@@ -225,6 +314,40 @@ class UserController {
       user.phone = body.phone;
       user.avatarImage = body.avatarImage;
       user.coverImage = body.coverImage;
+
+      if (user.save()) {
+        return res.status(200).json(user);
+      }
+
+      res.status(400).json("Error");
+    } catch (error) {
+      return res.status(400).json(error.message);
+    }
+  }
+
+  async updatePassword(req, res) {
+    try {
+      const tokenFromHeader = auth.getJwtToken(req);
+      let user = jwt.decode(tokenFromHeader);
+      const userId = user.payload.id;
+
+      const body = req.body;
+
+      user = await User.findOne({
+        where: { id: Number(userId) },
+      });
+
+      console.log(body.oldPassword);
+
+      let isCorrect = false;
+      await bcrypt.compare(req.body.password, user.password).then((result) => {
+        isCorrect = result;
+      });
+      if (!isCorrect) {
+        return res.status(400).json({ message: "Mật khẩu cũ không đúng" });
+      }
+
+      user.password = bcrypt.hashSync(body.password, config.auth.saltRounds);
 
       if (user.save()) {
         return res.status(200).json(user);

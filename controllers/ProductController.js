@@ -53,6 +53,7 @@ class ProductController {
         size,
         fromDate,
         toDate,
+        isSold = true,
       } = req.query;
 
       const query = { where: {} };
@@ -84,7 +85,7 @@ class ProductController {
 
       if (subCategoryId) {
         query.where.subCategoryId = [
-          ...query.where.subCategoryId,
+          ...(query.where.subCategoryId ?? []),
           subCategoryId,
         ];
       }
@@ -130,11 +131,17 @@ class ProductController {
         };
       }
 
+      let negativeStatus;
+      if (isSold === "false" || Number[statusId] === 3) negativeStatus = [6];
+      else negativeStatus = [3, 6];
+
+      // const negativeStatus =
+      //   isSold === "true" || Number(statusId) === 3 ? [3, 6] : [6];
       let products;
 
       if (criteria === "owner") {
         const allProducts = await models.Product.findAll({
-          where: { ...query.where },
+          where: { ...query.where, [Op.not]: [{ statusId: negativeStatus }] },
           include: [
             { model: models.User, as: "owner" },
             {
@@ -167,7 +174,6 @@ class ProductController {
         );
       } else {
         products = await models.Product.findAll({
-          where: { ...query.where },
           include: [
             { model: models.User, as: "owner" },
             {
@@ -180,13 +186,16 @@ class ProductController {
             { model: models.ProductStatus, as: "status" },
           ],
           ...query,
+          where: { ...query.where, [Op.not]: { statusId: negativeStatus } },
         });
       }
       if (!products) {
         return res.status(200).json("Not found");
       }
 
-      const count = await models.Product.count({ where: query.where });
+      const count = await models.Product.count({
+        where: { ...query.where, [Op.not]: { statusId: negativeStatus } },
+      });
 
       return res.status(200).json({ data: products, total: count });
     } catch (error) {
@@ -227,7 +236,7 @@ class ProductController {
       const { userId } = req.params;
 
       const products = await models.Product.findAll({
-        where: { ownerId: Number(userId) },
+        where: { ownerId: Number(userId), [Op.not]: [{ statusId: 6 }] },
         include: [
           { model: models.User, as: "owner" },
           { model: models.SubCategory, as: "category" },
@@ -244,6 +253,32 @@ class ProductController {
     } catch (error) {
       return res.status(400).json(error.message);
     }
+  }
+
+  async getStatisticOfSeller(req, res) {
+    try {
+      const tokenFromHeader = auth.getJwtToken(req);
+      const user = jwt.decode(tokenFromHeader);
+      const userId = user.payload.id;
+
+      const pending = await models.Order.count({
+        where: { sellerId: userId, statusId: 1 },
+      });
+      const active = await models.Order.count({
+        where: { sellerId: userId, statusId: 2 },
+      });
+      const sold = await models.Order.count({
+        where: { sellerId: userId, statusId: 3 },
+      });
+      const rejected = await models.Order.count({
+        where: { sellerId: userId, statusId: 4 },
+      });
+      const blocked = await models.Order.count({
+        where: { sellerId: userId, statusId: 5 },
+      });
+
+      return res.status(200).json([pending, active, sold, rejected, blocked]);
+    } catch (error) {}
   }
 
   async createProduct(req, res) {
@@ -327,8 +362,26 @@ class ProductController {
         where: { id: Number(id) },
       });
 
-      product.isActive = !product.isActive;
+      product.statusId = 5;
+      if (product.save()) {
+        return res.status(200).json(product);
+      }
 
+      return res.status(400).json("Error");
+    } catch (error) {
+      return res.status(400).json(error.message);
+    }
+  }
+
+  async deleteProduct(req, res) {
+    try {
+      const { id } = req.params;
+
+      const product = await models.Product.findOne({
+        where: { id: Number(id) },
+      });
+
+      product.statusId = 6;
       if (product.save()) {
         return res.status(200).json(product);
       }

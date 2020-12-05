@@ -11,7 +11,16 @@ router.post("/", auth.isAuthenticated, productController.createProduct);
 router.put("/verify/:id", productController.verifyProduct);
 router.put("/reject/:id", productController.rejectProduct);
 router.put("/:id", productController.updateProduct);
-
+router.get(
+  "/seller/statistic",
+  auth.isAuthenticated,
+  productController.getStatisticOfSeller
+);
+router.delete(
+  "/seller/:id",
+  auth.isAuthenticated,
+  productController.deleteProduct
+);
 router.delete(
   "/:id",
   auth.isAuthenticated,

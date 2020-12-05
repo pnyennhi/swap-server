@@ -15,6 +15,11 @@ router.get(
 router.get("/user", auth.isAuthenticated, orderController.getOrdersOfUser);
 router.get("/seller", auth.isAuthenticated, orderController.getOrdersOfSeller);
 router.get(
+  "/seller/statistic",
+  auth.isAuthenticated,
+  orderController.getStatisticOfSeller
+);
+router.get(
   "/revenue",
   auth.isAuthenticated,
   orderController.getRevenueOfSeller

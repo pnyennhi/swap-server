@@ -6,7 +6,7 @@ const userController = require("../controllers/UserController");
 
 /* GET users listing. */
 router.get("/profile", auth.isAuthenticated, userController.getProfile);
-router.get("/", auth.isAuthenticated, auth.isAdmin, userController.getAllUsers);
+router.get("/", userController.getAllUsers);
 router.get("/owner/:id", userController.getOwnerInfo);
 router.get(
   "/:id",
@@ -22,6 +22,11 @@ router.post(
   userController.createAdmin
 );
 router.put("/profile", auth.isAuthenticated, userController.updateProfile);
+router.put(
+  "/change-password",
+  auth.isAuthenticated,
+  userController.updatePassword
+);
 
 router.put(
   "/:id",
