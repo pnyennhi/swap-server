@@ -113,7 +113,7 @@ class TransactionController {
         walletId: Number(walletId),
         type,
         amount,
-        status: type === "withdraw" ? "ptoDateing" : "success",
+        status: type === "withdraw" ? "pending" : "success",
         orderId: orderId ?? null,
         paypalPayoutEmail: email,
       });

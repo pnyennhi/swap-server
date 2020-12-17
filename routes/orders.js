@@ -20,6 +20,12 @@ router.get(
   orderController.getStatisticOfSeller
 );
 router.get(
+  "/seller/statistic/:id",
+  auth.isAuthenticated,
+  auth.isAdmin,
+  orderController.adminGetStatisticOfSeller
+);
+router.get(
   "/revenue",
   auth.isAuthenticated,
   orderController.getRevenueOfSeller

@@ -59,6 +59,9 @@ module.exports = {
       weight: {
         type: Sequelize.DECIMAL(10, 2),
       },
+      note: {
+        type: Sequelize.STRING,
+      },
       statusId: {
         type: Sequelize.INTEGER,
         references: {

@@ -1,5 +1,6 @@
 const _ = require("lodash");
 const models = require("../models");
+const { ChangeToSlug } = require("../utils/slug");
 
 class SubCategoryController {
   async getOneSubCategory(req, res) {
@@ -34,7 +35,19 @@ class SubCategoryController {
 
   async createSubCategory(req, res) {
     try {
-      const subCategory = await models.SubCategory.create(req.body);
+      const bodySubCategory = req.body.subCategory;
+
+      const parentId = req.body.parentId;
+      const category = await models.Category.findOne({
+        where: { id: parentId },
+      });
+
+      const path = `${category.path}/${ChangeToSlug(bodySubCategory)}`;
+
+      const subCategory = await models.SubCategory.create({
+        ...req.body,
+        path,
+      });
 
       return res.status(200).json(subCategory);
     } catch (error) {
@@ -50,8 +63,15 @@ class SubCategoryController {
         where: { id: id },
       });
 
+      const parentId = req.body.parentId;
+      const category = await models.Category.findOne({
+        where: { id: parentId },
+      });
+
+      const path = `${category.path}/${ChangeToSlug(req.body.subCategory)}`;
+
       subCategory.subCategory = req.body.subCategory;
-      subCategory.path = req.body.path;
+      subCategory.path = path;
       subCategory.parentId = req.body.parentId;
 
       if (subCategory.save()) {

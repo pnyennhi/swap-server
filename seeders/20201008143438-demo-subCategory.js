@@ -18,6 +18,7 @@ module.exports = {
       },
       {
         subCategory: "Áo sơ mi",
+        path: "thoi-trang-nam/ao-so-mi",
         parentId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),

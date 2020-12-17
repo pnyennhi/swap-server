@@ -5,6 +5,7 @@ class ProductStatusController {
   async getAllProductStatus(req, res) {
     try {
       const wards = await models.ProductStatus.findAll();
+      wards.pop();
 
       return res.status(200).json(wards);
     } catch (error) {

@@ -43,6 +43,7 @@ module.exports = (sequelize, DataTypes) => {
       coverImage: DataTypes.STRING,
       price: DataTypes.DECIMAL(10, 2),
       weight: DataTypes.DECIMAL(10, 2),
+      note: DataTypes.STRING,
       statusId: DataTypes.INTEGER,
     },
     {

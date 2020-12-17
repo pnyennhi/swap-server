@@ -261,20 +261,20 @@ class ProductController {
       const user = jwt.decode(tokenFromHeader);
       const userId = user.payload.id;
 
-      const pending = await models.Order.count({
-        where: { sellerId: userId, statusId: 1 },
+      const pending = await models.Product.count({
+        where: { ownerId: userId, statusId: 1 },
       });
-      const active = await models.Order.count({
-        where: { sellerId: userId, statusId: 2 },
+      const active = await models.Product.count({
+        where: { ownerId: userId, statusId: 2 },
       });
-      const sold = await models.Order.count({
-        where: { sellerId: userId, statusId: 3 },
+      const sold = await models.Product.count({
+        where: { ownerId: userId, statusId: 3 },
       });
-      const rejected = await models.Order.count({
-        where: { sellerId: userId, statusId: 4 },
+      const rejected = await models.Product.count({
+        where: { ownerId: userId, statusId: 4 },
       });
-      const blocked = await models.Order.count({
-        where: { sellerId: userId, statusId: 5 },
+      const blocked = await models.Product.count({
+        where: { ownerId: userId, statusId: 5 },
       });
 
       return res.status(200).json([pending, active, sold, rejected, blocked]);
@@ -330,9 +330,11 @@ class ProductController {
       product.price = req.body.price;
       product.statusId = 1;
 
-      if (req.body.quantity < product.soldQuantity) {
-        return res.status(500).json("Kho hàng phải lớn hơn số hàng đã bán");
+      if (req.body.quantity <= product.soldQuantity) {
+        product.statusId = 3;
       }
+
+      product.quantity = req.body.quantity;
 
       await product.save();
 
@@ -362,12 +364,30 @@ class ProductController {
         where: { id: Number(id) },
       });
 
+      const orderItems = await models.OrderItem.findAll({
+        where: { productId: id },
+      });
+
+      await (async function () {
+        orderItems.forEach(async (item) => {
+          const order = await models.Order.findOne({
+            where: { id: item.orderId },
+          });
+
+          if (order.statusId !== 5 || order.statusId !== 6) {
+            return res
+              .status(500)
+              .json("Sản phẩm này đã được đặt. Không thể khóa lúc này");
+          }
+        });
+      })();
+
       product.statusId = 5;
       if (product.save()) {
         return res.status(200).json(product);
       }
 
-      return res.status(400).json("Error");
+      return res.status(400).json("Đã có lỗi xảy ra");
     } catch (error) {
       return res.status(400).json(error.message);
     }
@@ -381,12 +401,30 @@ class ProductController {
         where: { id: Number(id) },
       });
 
+      const orderItems = await models.OrderItem.findAll({
+        where: { productId: id },
+      });
+
+      await (async function () {
+        orderItems.forEach(async (item) => {
+          const order = await models.Order.findOne({
+            where: { id: item.orderId },
+          });
+
+          if (order.statusId !== 5 || order.statusId !== 6) {
+            return res
+              .status(500)
+              .json("Sản phẩm này đã được đặt. Không thể xóa lúc này");
+          }
+        });
+      })();
+
       product.statusId = 6;
       if (product.save()) {
         return res.status(200).json(product);
       }
 
-      return res.status(400).json("Error");
+      return res.status(400).json("Đã có lỗi xảy ra");
     } catch (error) {
       return res.status(400).json(error.message);
     }
@@ -432,6 +470,35 @@ class ProductController {
       return res.status(400).json("Error");
     } catch (error) {
       return res.status(400).json(error.message);
+    }
+  }
+
+  async adminGetStatisticOfSeller(req, res) {
+    try {
+      const userId = req.params.id;
+
+      const all = await models.Product.count({ where: { ownerId: userId } });
+      const paymentWaiting = await models.Product.count({
+        where: { ownerId: userId, statusId: 1 },
+      });
+      const acceptWaiting = await models.Product.count({
+        where: { ownerId: userId, statusId: 2 },
+      });
+      const pickupWaiting = await models.Product.count({
+        where: { ownerId: userId, statusId: 3 },
+      });
+      const delivering = await models.Product.count({
+        where: { ownerId: userId, statusId: 4 },
+      });
+      const done = await models.Product.count({
+        where: { ownerId: userId, statusId: 5 },
+      });
+
+      return res
+        .status(200)
+        .json([paymentWaiting, acceptWaiting, pickupWaiting, delivering, done]);
+    } catch (error) {
+      return res.status(400).json(err);
     }
   }
 }

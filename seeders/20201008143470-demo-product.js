@@ -19,7 +19,8 @@ module.exports = {
         quantity: 1,
         soldQuantity: 0,
         price: 20,
-        weight: index % 9,
+        weight: (index % 9) + 1,
+        note: null,
         coverImage:
           "https://images.vinted.net/thumbs/f800/01_00892_Su9zi1g1KZw7URCNksaa6pmA.jpeg?1602627645-ecdd43e36816122389209ea1214474eb59448ba7",
         statusId: 2,

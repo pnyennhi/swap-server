@@ -27,6 +27,12 @@ router.put(
   auth.isAuthenticated,
   userController.updatePassword
 );
+router.put(
+  "/unlock/:id",
+  auth.isAuthenticated,
+  auth.isAdmin,
+  userController.unlockUser
+);
 
 router.put(
   "/:id",

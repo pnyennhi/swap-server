@@ -5,7 +5,7 @@ const auth = require("../utils/auth");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 const sequelize = require("sequelize");
-const { User, Role, Product, Wallet, Review } = require("../models");
+const { User, Role, Product, Wallet, Review, Order } = require("../models");
 
 class UserController {
   async getProfile(req, res) {
@@ -239,6 +239,11 @@ class UserController {
       data.roleId = 2;
       data.isActive = true;
       data.password = bcrypt.hashSync(data.password, config.auth.saltRounds);
+      data.avatarImage =
+        req.body.avatarImage || "https://static.toiimg.com/photo/76729750.cms";
+      data.coverImage =
+        req.body.coverImage ||
+        "https://img.thuthuatphanmem.vn/uploads/2018/09/19/anh-bia-facebook-cuc-dep-22_105256956.jpg";
 
       user = await User.create(data);
 
@@ -246,7 +251,7 @@ class UserController {
 
       const wallet = await Wallet.create({ userId: userId, amount: 0 });
 
-      res.status(200).json(user);
+      return res.status(200).json(user);
     } catch (error) {
       return res.status(400).json(error.message);
     }
@@ -298,6 +303,33 @@ class UserController {
     }
   }
 
+  async unlockUser(req, res) {
+    try {
+      const { id } = req.params;
+      const user = await User.findOne({
+        where: { id: Number(id) },
+      });
+
+      user.isActive = true;
+      if (user.save()) {
+        const products = await Product.findAll({
+          where: { ownerId: user.id, statusId: 5 },
+        });
+
+        products.forEach((product) => {
+          product.statusId = 2;
+          product.save();
+        });
+
+        return res.status(200).json(user);
+      }
+
+      res.status(400).json("Error");
+    } catch (error) {
+      return res.status(400).json(error.message);
+    }
+  }
+
   async updateProfile(req, res) {
     try {
       const tokenFromHeader = auth.getJwtToken(req);
@@ -314,6 +346,8 @@ class UserController {
       user.phone = body.phone;
       user.avatarImage = body.avatarImage;
       user.coverImage = body.coverImage;
+      user.birthday = new Date(body.birthday);
+      user.gender = body.gender;
 
       if (user.save()) {
         return res.status(200).json(user);
@@ -366,14 +400,37 @@ class UserController {
         where: { id: Number(id) },
       });
 
+      let orders = await Order.findAll({
+        where: { sellerId: id, statusId: [3, 4] },
+      });
+
+      if (orders.length > 0) {
+        return res
+          .status(505)
+          .json(
+            "Người dùng này đang có đơn hàng đang thực hiện. Không thể khóa lúc này."
+          );
+      }
+
+      orders = await Order.findAll({
+        where: { sellerId: id, statusId: [1, 2] },
+      });
+
       user.isActive = false;
 
       if (user.save()) {
-        const products = await Product.findAll({ where: { ownerId: user.id } });
+        const products = await Product.findAll({
+          where: { ownerId: user.id, statusId: 2 },
+        });
 
         products.forEach((product) => {
-          product.isActive = false;
+          product.statusId = 5;
           product.save();
+        });
+
+        orders.forEach((order) => {
+          order.statusId = 6;
+          order.save();
         });
 
         res.status(200).json(user);

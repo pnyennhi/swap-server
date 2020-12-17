@@ -1,5 +1,6 @@
 const _ = require("lodash");
 const models = require("../models");
+const { ChangeToSlug } = require("../utils/slug");
 
 async function getCategory(path) {
   const categoryPath = path.includes("/")
@@ -129,7 +130,8 @@ class CategoryController {
 
   async createCategory(req, res) {
     try {
-      const category = await models.Category.create(req.body);
+      const path = ChangeToSlug(req.body.category);
+      const category = await models.Category.create({ ...req.body, path });
 
       return res.status(200).json(category);
     } catch (error) {
@@ -143,8 +145,9 @@ class CategoryController {
 
       const category = await models.Category.findOne({ where: { id: id } });
 
+      const path = ChangeToSlug(req.body.category);
       category.category = req.body.category;
-      category.path = req.body.path;
+      category.path = path;
 
       if (category.save()) {
         return res.status(200).json(category);

@@ -3,6 +3,7 @@ const models = require("../models");
 const auth = require("../utils/auth");
 const jwt = require("jsonwebtoken");
 const { query } = require("express");
+const { Op } = require("sequelize");
 
 class OrderController {
   async getAllOrders(req, res, next) {
@@ -101,7 +102,7 @@ class OrderController {
         0
       );
 
-      order.dataValues.total = total + order.dataValues.shippingFee;
+      order.dataValues.total = total + Number(order.dataValues.shippingFee);
 
       return res.status(200).json(order);
     } catch (error) {
@@ -287,7 +288,48 @@ class OrderController {
           done,
           cancel,
         ]);
-    } catch (error) {}
+    } catch (error) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async adminGetStatisticOfSeller(req, res) {
+    try {
+      const userId = req.params.id;
+
+      const all = await models.Order.count({ where: { sellerId: userId } });
+      const paymentWaiting = await models.Order.count({
+        where: { sellerId: userId, statusId: 1 },
+      });
+      const acceptWaiting = await models.Order.count({
+        where: { sellerId: userId, statusId: 2 },
+      });
+      const pickupWaiting = await models.Order.count({
+        where: { sellerId: userId, statusId: 3 },
+      });
+      const delivering = await models.Order.count({
+        where: { sellerId: userId, statusId: 4 },
+      });
+      const done = await models.Order.count({
+        where: { sellerId: userId, statusId: 5 },
+      });
+      const cancel = await models.Order.count({
+        where: { sellerId: userId, statusId: 6 },
+      });
+
+      return res
+        .status(200)
+        .json([
+          paymentWaiting,
+          acceptWaiting,
+          pickupWaiting,
+          delivering,
+          done,
+          cancel,
+        ]);
+    } catch (error) {
+      return res.status(400).json(err);
+    }
   }
 
   async createOrder(req, res, next) {
@@ -500,10 +542,19 @@ class OrderController {
       const user = jwt.decode(tokenFromHeader);
       const userId = user.payload.id;
 
-      const { start, end } = req.query;
+      const { fromDate, toDate } = req.query;
+
+      const query = { where: {} };
+
+      if (fromDate && toDate) {
+        console.log("date", fromDate, toDate);
+        query.where.createdAt = {
+          [Op.between]: [new Date(fromDate), new Date(toDate)],
+        };
+      }
 
       const orders = await models.Order.findAll({
-        where: { sellerId: userId, statusId: 4 },
+        where: { sellerId: userId, statusId: 5, ...query.where },
         order: [["id", "DESC"]],
         include: [
           { model: models.User, as: "user" },

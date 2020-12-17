@@ -23,6 +23,8 @@ module.exports = (sequelize, DataTypes) => {
       avatarImage: DataTypes.STRING,
       coverImage: DataTypes.STRING,
       phone: DataTypes.STRING,
+      birthday: DataTypes.DATE,
+      gender: DataTypes.STRING,
       roleId: DataTypes.INTEGER,
       isActive: DataTypes.BOOLEAN,
     },
