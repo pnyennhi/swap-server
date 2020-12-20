@@ -19,7 +19,19 @@ module.exports = {
         updatedAt: new Date(),
       },
       { status: "Đã giao hàng", createdAt: new Date(), updatedAt: new Date() },
+      { status: "Hoàn thành", createdAt: new Date(), updatedAt: new Date() },
       { status: "Đã hủy", createdAt: new Date(), updatedAt: new Date() },
+      {
+        status: "Yêu cầu hoàn hàng",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        status: "Đang hoàn hàng",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      { status: "Đã hoàn hàng", createdAt: new Date(), updatedAt: new Date() },
     ]);
   },
   down: (queryInterface, Sequelize) => {

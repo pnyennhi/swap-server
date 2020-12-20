@@ -16,6 +16,20 @@ module.exports = {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        condition: "Tốt",
+        description:
+          "Một mặt hàng đã qua sử dụng mới vài lần, chưa có khuyết điểm gì",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        condition: "Được",
+        description:
+          "Một mặt hàng đã qua sử dụng vài đến nhiều lần, có một số khuyết điểm nhỏ, vẫn có thể chấp nhận được",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
   },
   down: (queryInterface, Sequelize) => {

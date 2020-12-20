@@ -6,10 +6,10 @@ const { isAdmin } = require("../utils/auth");
 module.exports = {
   up: (queryInterface, Sequelize) => {
     const Wallets = [];
-    for (let i = 1; i <= 100; i++) {
+    for (let i = 1; i <= 18; i++) {
       Wallets.push({
         userId: i,
-        amount: 70,
+        amount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

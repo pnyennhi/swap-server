@@ -6,18 +6,18 @@ module.exports = {
     const cart = [];
     cart.push({
       userId: 1,
-      productId: 35,
+      productId: 1,
       quantity: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    cart.push({
-      userId: 1,
-      productId: 26,
-      quantity: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // cart.push({
+    //   userId: 1,
+    //   productId: 26,
+    //   quantity: 1,
+    //   createdAt: new Date(),
+    //   updatedAt: new Date(),
+    // });
     return queryInterface.bulkInsert("Carts", cart, {});
   },
   // eslint-disable-next-line no-unused-vars

@@ -19,6 +19,7 @@ module.exports = {
       },
       { status: "Bị từ chối", createdAt: new Date(), updatedAt: new Date() },
       { status: "Bị khóa", createdAt: new Date(), updatedAt: new Date() },
+      { status: "Bị xóa", createdAt: new Date(), updatedAt: new Date() },
     ]);
   },
   down: (queryInterface, Sequelize) => {

@@ -10,12 +10,12 @@ module.exports = {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    wishlist.push({
-      userId: 1,
-      productId: 2,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // wishlist.push({
+    //   userId: 1,
+    //   productId: 2,
+    //   createdAt: new Date(),
+    //   updatedAt: new Date(),
+    // });
     return queryInterface.bulkInsert("Wishlists", wishlist, {});
   },
   // eslint-disable-next-line no-unused-vars

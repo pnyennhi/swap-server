@@ -96,6 +96,15 @@ module.exports = {
           key: "id",
         },
       },
+      hasLeft: {
+        type: Sequelize.BOOLEAN,
+      },
+      hasArrived: {
+        type: Sequelize.BOOLEAN,
+      },
+      receivedDay: {
+        type: Sequelize.DATE,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
