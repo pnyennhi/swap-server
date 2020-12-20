@@ -61,7 +61,7 @@ class OrderController {
         });
       })();
 
-      return res.status(200).json("Reject success");
+      return res.status(200).json(req.body.order);
     } catch (err) {
       return res.status(400).json(err.message);
     }

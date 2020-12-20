@@ -25,6 +25,8 @@ class OrderController {
           { model: models.User, as: "user" },
           { model: models.User, as: "seller" },
           { model: models.OrderStatus, as: "status" },
+          { model: models.City, as: "shipCity" },
+          { model: models.City, as: "sellerCity" },
         ],
       });
 
@@ -75,6 +77,7 @@ class OrderController {
           { model: models.District, as: "sellerDistrict" },
           { model: models.Ward, as: "sellerWard" },
           { model: models.OrderStatus, as: "status" },
+          { model: models.OrderHistory, as: "orderHistory" },
           {
             model: models.OrderItem,
             as: "items",
@@ -116,8 +119,16 @@ class OrderController {
       const user = jwt.decode(tokenFromHeader);
       const userId = user.payload.id;
 
+      const { statusId } = req.query;
+
+      const query = { where: {} };
+
+      if (statusId) {
+        query.where.statusId = statusId;
+      }
+
       const orders = await models.Order.findAll({
-        where: { userId: userId },
+        where: { userId: userId, ...query.where },
         order: [["id", "DESC"]],
         include: [
           { model: models.User, as: "user" },
@@ -271,11 +282,23 @@ class OrderController {
       const delivering = await models.Order.count({
         where: { sellerId: userId, statusId: 4 },
       });
-      const done = await models.Order.count({
+      const delivered = await models.Order.count({
         where: { sellerId: userId, statusId: 5 },
       });
-      const cancel = await models.Order.count({
+      const completed = await models.Order.count({
         where: { sellerId: userId, statusId: 6 },
+      });
+      const cancel = await models.Order.count({
+        where: { sellerId: userId, statusId: 7 },
+      });
+      const refundRequest = await models.Order.count({
+        where: { sellerId: userId, statusId: 8 },
+      });
+      const refunding = await models.Order.count({
+        where: { sellerId: userId, statusId: 9 },
+      });
+      const refunded = await models.Order.count({
+        where: { sellerId: userId, statusId: 10 },
       });
 
       return res
@@ -285,8 +308,12 @@ class OrderController {
           acceptWaiting,
           pickupWaiting,
           delivering,
-          done,
+          delivered,
+          completed,
           cancel,
+          refundRequest,
+          refunding,
+          refunded,
         ]);
     } catch (error) {
       return res.status(400).json(err);
@@ -310,11 +337,23 @@ class OrderController {
       const delivering = await models.Order.count({
         where: { sellerId: userId, statusId: 4 },
       });
-      const done = await models.Order.count({
+      const delivered = await models.Order.count({
         where: { sellerId: userId, statusId: 5 },
       });
-      const cancel = await models.Order.count({
+      const completed = await models.Order.count({
         where: { sellerId: userId, statusId: 6 },
+      });
+      const cancel = await models.Order.count({
+        where: { sellerId: userId, statusId: 7 },
+      });
+      const refundRequest = await models.Order.count({
+        where: { sellerId: userId, statusId: 8 },
+      });
+      const refunding = await models.Order.count({
+        where: { sellerId: userId, statusId: 9 },
+      });
+      const refunded = await models.Order.count({
+        where: { sellerId: userId, statusId: 10 },
       });
 
       return res
@@ -324,8 +363,12 @@ class OrderController {
           acceptWaiting,
           pickupWaiting,
           delivering,
-          done,
+          delivered,
+          completed,
           cancel,
+          refundRequest,
+          refunding,
+          refunded,
         ]);
     } catch (error) {
       return res.status(400).json(err);
@@ -371,6 +414,11 @@ class OrderController {
       req.body.orderId = order.dataValues.id;
       req.body.userId = userId;
 
+      const history = await models.OrderHistory.create({
+        detail: "Tạo đơn hàng",
+        orderId: order.dataValues.id,
+      });
+
       next();
 
       // return res.status(200).json(order);
@@ -408,10 +456,13 @@ class OrderController {
       order.sellerPhone = sellerAddress.phone;
 
       if (order.save()) {
+        const history = await models.OrderHistory.create({
+          detail: "Người bán xác nhận đơn hàng",
+          orderId: Number(id),
+        });
+
         return res.status(200).json(order);
       }
-
-      return res.status(500).json("Error");
     } catch (error) {
       return res.status(400).json(error.message);
     }
@@ -436,9 +487,14 @@ class OrderController {
 
       const oldStatusId = order.statusId;
 
-      order.statusId = 6;
+      order.statusId = 7;
 
       if (order.save()) {
+        const history = await models.OrderHistory.create({
+          detail: "Người bán đã hủy đơn hàng",
+          orderId: Number(id),
+        });
+
         if (order.paymentMethod === "paypal" && oldStatusId !== 1) {
           const total = order.dataValues.items.reduce(
             (sum, item) => (sum += item.price * item.quantity),
@@ -482,11 +538,14 @@ class OrderController {
       // if (req.body.statusId == 2 || req.body.statusId == 6) {
       //   return res.status(500).json("You don't have permission");
       // }
+      if (req.body.statusId === 5) {
+        order.receivedDay = new Date(Date.now());
+      }
 
       order.statusId = req.body.statusId;
 
       if (order.save()) {
-        if (req.body.statusId === 5) {
+        if (req.body.statusId === 6) {
           const total = order.dataValues.items.reduce(
             (sum, item) => (sum += item.price * item.quantity),
             0
@@ -504,7 +563,29 @@ class OrderController {
           wallet.amount = Number(wallet.dataValues.amount) + Number(total);
           await wallet.save();
           return res.status(200).json(transaction);
-        } else if (req.body.statusId === 6) {
+        } else if (req.body.statusId === 7 || req.body.statusId === 10) {
+          const total = order.dataValues.items.reduce(
+            (sum, item) => (sum += item.price * item.quantity),
+            0
+          );
+          const wallet = await models.Wallet.findOne({
+            where: { userId: order.userId },
+          });
+
+          wallet.amount =
+            Number(wallet.dataValues.amount) +
+            total +
+            Number(order.shippingFee);
+          await wallet.save();
+
+          const transaction = await models.Transaction.create({
+            walletId: wallet.id,
+            orderId: order.id,
+            amount: total + Number(order.shippingFee),
+            type: "refund",
+            status: "success",
+          });
+
           return next();
         }
 
@@ -554,7 +635,7 @@ class OrderController {
       }
 
       const orders = await models.Order.findAll({
-        where: { sellerId: userId, statusId: 5, ...query.where },
+        where: { sellerId: userId, statusId: 6, ...query.where },
         order: [["id", "DESC"]],
         include: [
           { model: models.User, as: "user" },

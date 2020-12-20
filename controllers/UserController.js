@@ -5,7 +5,15 @@ const auth = require("../utils/auth");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 const sequelize = require("sequelize");
-const { User, Role, Product, Wallet, Review, Order } = require("../models");
+const {
+  User,
+  Role,
+  Product,
+  Wallet,
+  Review,
+  Order,
+  OrderHistory,
+} = require("../models");
 
 class UserController {
   async getProfile(req, res) {
@@ -42,6 +50,7 @@ class UserController {
         keyword,
         orderBy,
         isActive,
+        isAdmin,
       } = req.query;
 
       const query = { where: {} };
@@ -65,7 +74,7 @@ class UserController {
               },
             },
           ],
-          roleId: 2,
+          roleId: isAdmin ? [1, 2] : 2,
         };
       }
 
@@ -401,7 +410,7 @@ class UserController {
       });
 
       let orders = await Order.findAll({
-        where: { sellerId: id, statusId: [3, 4] },
+        where: { sellerId: id, statusId: [3, 4, 5] },
       });
 
       if (orders.length > 0) {
@@ -428,10 +437,15 @@ class UserController {
           product.save();
         });
 
-        orders.forEach((order) => {
-          order.statusId = 6;
+        for (const order of orders) {
+          order.statusId = 7;
           order.save();
-        });
+
+          await OrderHistory.create({
+            orderId: order.id,
+            detail: "Đơn hàng đã bị hủy, Lý do: Người bán bị khóa tài khoản",
+          });
+        }
 
         res.status(200).json(user);
       }

@@ -30,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
         as: "shipWard",
       });
       Order.belongsTo(models.City, {
-        foreignKey: "shipCityId",
+        foreignKey: "sellerCityId",
         as: "sellerCity",
       });
       Order.belongsTo(models.District, {
@@ -50,6 +50,7 @@ module.exports = (sequelize, DataTypes) => {
         as: "review",
       });
       Order.hasMany(models.OrderItem, { as: "items" });
+      Order.hasMany(models.OrderHistory, { as: "orderHistory" });
     }
   }
   Order.init(
@@ -72,6 +73,9 @@ module.exports = (sequelize, DataTypes) => {
       note: DataTypes.STRING,
       paymentMethod: DataTypes.STRING,
       statusId: DataTypes.INTEGER,
+      hasLeft: DataTypes.BOOLEAN,
+      hasArrived: DataTypes.BOOLEAN,
+      receivedDay: DataTypes.DATE,
     },
     {
       sequelize,

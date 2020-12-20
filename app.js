@@ -37,6 +37,8 @@ var brandRouter = require("./routes/brand");
 var sizeRouter = require("./routes/size");
 var materialRouter = require("./routes/material");
 var dashboardRouter = require("./routes/dashboard");
+var orderHistoryRouter = require("./routes/orderHistory");
+var refundRouter = require("./routes/refundRequest");
 
 var transactionController = require("./controllers/TransactionController");
 
@@ -81,6 +83,8 @@ app.use("/brands", brandRouter);
 app.use("/sizes", sizeRouter);
 app.use("/materials", materialRouter);
 app.use("/dashboard", dashboardRouter);
+app.use("/orderHistory", orderHistoryRouter);
+app.use("/refundRequest", refundRouter);
 
 app.post("/webhook", async (req, res) => {
   // console.log("app", req.body);
